@@ -1,8 +1,6 @@
-import os
 import hashlib
 from pathlib import Path
 from typing import List
-
 
 def file_hash(file_path: Path) -> str:
     """
@@ -15,7 +13,7 @@ def file_hash(file_path: Path) -> str:
     str: The SHA-256 hash of the file as a hexadecimal string.
     """
     hasher = hashlib.sha256()
-    with open(file_path, 'rb') as file:
+    with file_path.open('rb') as file:
         buf = file.read()
         hasher.update(buf)
     return hasher.hexdigest()
@@ -33,27 +31,28 @@ def main(target_directory: str, directories_to_check: List[str]) -> None:
     existing_files_hashes = set()
 
     for directory in directories_to_check:
-        for root, _, files in os.walk(directory):
-            for file in files:
-                file_path = Path(root) / file
+        dir_path = Path(directory)
+        for file_path in dir_path.rglob('*'):
+            print(f'file_path {file_path} found')
+            if file_path.is_file():
+                print(f'adding its hash to existing_files_hashes {file_hash(file_path)}')
                 existing_files_hashes.add(file_hash(file_path))
 
     # Iterate over files in target_directory and remove them if their hash exists in existing_files_hashes
-    for root, _, files in os.walk(target_directory):
-        for file in files:
-            file_path = Path(root) / file
-            if file_hash(file_path) in existing_files_hashes:
-                print(f'Removing {file_path} as it is already sorted.')
-                os.remove(file_path)
+    target_path = Path(target_directory)
+    for file_path in target_path.rglob('*'):
+        if file_path.is_file() and file_hash(file_path) in existing_files_hashes:
+            print(f'Removing {file_path} as it is already sorted.')
+            file_path.unlink()
 
 
 if __name__ == '__main__':
     # Example usage
-    TARGET_DIRECTORY = r'path\to\target\directory'
+    TARGET_DIRECTORY = r'../workspace/VRAC'
+
     DIRECTORIES_TO_CHECK = [
-        r'path\to\directory1',
-        r'path\to\directory2',
-        # Add more directories as needed
+        str(path) for path in Path(TARGET_DIRECTORY).parent.iterdir()
+        if path.is_dir() and path != Path(TARGET_DIRECTORY)
     ]
 
     main(TARGET_DIRECTORY, DIRECTORIES_TO_CHECK)
